@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROVEN — LinkedIn KPI Dashboard</title>
+<style>
+  :root {
+    --bg:#f8f9fb;--surface:#fff;--border:#e4e7ed;
+    --text-primary:#1a1f2e;--text-secondary:#4a5268;--text-muted:#8990a8;
+    --accent:#0057B8;--accent-light:#e8f0fb;
+    --c1:#0057B8;--c2:#0e8c7a;--c3:#6b3fa0;--c4:#b45309;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{--bg:#0f1117;--surface:#1a1f2e;--border:#2a3050;--text-primary:#e8eaf2;--text-secondary:#9aa0bc;--text-muted:#5a6080;--accent-light:#1a2a4a;}
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text-primary);font-size:14px;line-height:1.5}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:space-between}
+  header h1{font-size:17px;font-weight:700}
+  header .meta{font-size:12px;color:var(--text-muted)}
+  .tabs{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;gap:0}
+  .tab{padding:12px 20px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-panel{display:none}.tab-panel.active{display:block}
+  main{max-width:1140px;margin:0 auto;padding:24px 24px 60px}
+  .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:28px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+  .kpi-row{display:grid;gap:12px;margin-bottom:18px}
+  .kpi-row.cols-4{grid-template-columns:repeat(4,1fr)}
+  .kpi-tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative}
+  .kpi-tile .label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+  .kpi-tile .value{font-size:28px;font-weight:700;letter-spacing:-1px}
+  .kpi-tile .delta{font-size:12px;margin-top:3px;color:var(--text-muted)}
+  .charts-row{display:grid;gap:16px;margin-bottom:16px}
+  .charts-row.cols-2{grid-template-columns:1fr 1fr}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px}
+  .chart-card.wide{grid-column:1/-1}
+  .chart-card h2{font-size:13px;font-weight:600;margin-bottom:2px}
+  .chart-card .subtitle{font-size:11px;color:var(--text-muted);margin-bottom:14px}
+  svg text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .tooltip-box{position:fixed;background:#1a1f2e;color:#fff;padding:7px 11px;border-radius:6px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .1s;z-index:999;max-width:240px;line-height:1.5}
+  .info-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--text-muted);font-size:9px;color:var(--text-muted);cursor:help;font-style:normal}
+  .posts-table{width:100%;border-collapse:collapse;font-size:12px}
+  .posts-table th{text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:6px 10px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+  .posts-table th:hover{color:var(--accent)}
+  .posts-table th.sort-asc .sa::after{content:' ↑'}
+  .posts-table th.sort-desc .sa::after{content:' ↓'}
+  .posts-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .posts-table tr:last-child td{border-bottom:none}
+  .posts-table tr:hover td{background:var(--bg)}
+  .post-title{max-width:320px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4}
+  .post-title a{color:var(--accent);text-decoration:none}
+  .author-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:100px;background:var(--accent-light);color:var(--accent);font-weight:600;white-space:nowrap}
+  .num{text-align:right}
+  .insight-box{background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;font-size:13px;color:#92400e;margin-top:16px}
+  .insight-box strong{color:#78350f}
+  .loc-table{width:100%;border-collapse:collapse;font-size:12px}
+  .loc-table td{padding:7px 8px;border-bottom:1px solid var(--border)}
+  .loc-table tr:last-child td{border-bottom:none}
+  .bar-cell{width:120px}
+  .bar-bg{background:var(--bg);border-radius:3px;height:8px;overflow:hidden}
+  .bar-fill{height:8px;border-radius:3px}
+  .loc-tables-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="tooltip-box" id="tt"></div>
+<header>
+  <h1>PROVEN — LinkedIn KPIs</h1>
+  <span class="meta">Updated 27 Aug 2026</span>
+</header>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">Content &amp; Followers</div>
+  <div class="tab" onclick="switchTab(1)">Visitors &amp; Audience</div>
+</div>
+
+<!-- TAB 1 -->
+<div class="tab-panel active" id="tab0">
+<main>
+  <div class="section-label">Headline KPIs</div>
+  <div class="kpi-row cols-4">
+    <div class="kpi-tile">
+      <div class="label">Followers</div>
+      <div class="value">119</div>
+      <div class="delta">Since 18 Aug 2025</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="label">Total Impressions <i class="info-icon" data-tip="The number of times any PROVEN LinkedIn content appeared on screen">ⓘ</i></div>
+      <div class="value">3,340</div>
+      <div class="delta">12-month total</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="label">Posts Published</div>
+      <div class="value">17</div>
+      <div class="delta">All time</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="label">Avg Engagement Rate <i class="info-icon" data-tip="(Clicks + Reactions + Comments + Reposts) ÷ Impressions. LinkedIn benchmark ~2% for B2B.">ⓘ</i></div>
+      <div class="value">27.1%</div>
+      <div class="delta">Across all posts</div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-2">
+    <div class="chart-card">
+      <h2>Cumulative follower growth</h2>
+      <div class="subtitle">Daily data since 18 Aug 2025</div>
+      <svg id="svg-foll" viewBox="0 0 500 180" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h2>New followers per month</h2>
+      <div class="subtitle">&nbsp;</div>
+      <svg id="svg-new" viewBox="0 0 500 180" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card wide">
+      <h2>Monthly impressions</h2>
+      <div class="subtitle">* Aug &#39;26 partial month</div>
+      <svg id="svg-imp" viewBox="0 0 1000 180" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="section-label">Location</div>
+  <div class="loc-tables-row">
+    <div class="chart-card">
+      <h2>Follower location</h2>
+      <div class="subtitle">By country · follower base snapshot</div>
+      <table class="loc-table" id="loc-foll"></table>
+    </div>
+    <div class="chart-card">
+      <h2>Visitor location</h2>
+      <div class="subtitle">By country · Aug 2026</div>
+      <table class="loc-table" id="loc-vis-static"></table>
+    </div>
+  </div>
+
+  <div class="section-label">All Posts — ranked by impressions</div>
+  <div class="chart-card wide" style="overflow-x:auto">
+    <table class="posts-table" id="posts-tbl">
+      <thead><tr>
+        <th onclick="sortPosts(0)"><span class="sa">Post</span></th>
+        <th onclick="sortPosts(1)"><span class="sa">Date</span></th>
+        <th onclick="sortPosts(2)"><span class="sa">Author</span></th>
+        <th class="num" onclick="sortPosts(3)"><span class="sa">Impr.</span></th>
+        <th class="num" onclick="sortPosts(4)"><span class="sa">Clicks</span></th>
+        <th class="num" onclick="sortPosts(5)"><span class="sa">React.</span></th>
+        <th class="num" onclick="sortPosts(6)"><span class="sa">Comm.</span></th>
+        <th class="num" onclick="sortPosts(7)">
+          <span class="sa">Eng.rate</span>
+          <i class="info-icon" style="vertical-align:middle" data-tip="(Clicks+Reactions+Comments+Reposts) ÷ Impressions">ⓘ</i>
+        </th>
+      </tr></thead>
+      <tbody id="posts-body"></tbody>
+    </table>
+  </div>
+</main>
+</div>
+
+<!-- TAB 2 -->
+<div class="tab-panel" id="tab1">
+<main>
+  <div class="section-label">Visitor KPIs <span style="font-size:10px;font-weight:400;text-transform:none">(28 Jul--25 Aug 2026)</span></div>
+  <div class="kpi-row cols-4">
+    <div class="kpi-tile"><div class="label">Total Page Views</div><div class="value">94</div><div class="delta">Last 30 days</div></div>
+    <div class="kpi-tile"><div class="label">Unique Visitors</div><div class="value">54</div><div class="delta">Last 30 days</div></div>
+    <div class="kpi-tile"><div class="label">Pages / Visitor</div><div class="value">1.7</div><div class="delta">Last 30 days</div></div>
+    <div class="kpi-tile"><div class="label">Active Days</div><div class="value">32</div><div class="delta">Days with ≥1 view</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card wide">
+      <h2>Daily page views</h2>
+      <div class="subtitle">28 Jul--25 Aug 2026</div>
+      <svg id="svg-daily" viewBox="0 0 1000 180" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="charts-row cols-2">
+    <div class="chart-card">
+      <h2>Visitor seniority</h2>
+      <div class="subtitle">Decision-makers highlighted · Aug 2026</div>
+      <svg id="svg-sen" viewBox="0 0 500 200" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h2>Job function</h2>
+      <div class="subtitle">Top 8 · Aug 2026</div>
+      <svg id="svg-job" viewBox="0 0 500 220" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="charts-row cols-2">
+    <div class="chart-card">
+      <h2>Company size</h2>
+      <div class="subtitle">Sorted small → large · Aug 2026</div>
+      <svg id="svg-size" viewBox="0 0 500 200" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h2>Visitor location</h2>
+      <div class="subtitle">By country · Aug 2026</div>
+      <table class="loc-table" id="loc-vis"></table>
+    </div>
+  </div>
+
+  <div class="section-label">Follower Audience</div>
+  <div class="loc-tables-row">
+    <div class="chart-card">
+      <h2>Follower location</h2>
+      <div class="subtitle">By country · follower base snapshot</div>
+      <table class="loc-table" id="loc-foll2"></table>
+    </div>
+    <div class="chart-card">
+      <h2>Follower seniority</h2>
+      <div class="subtitle">Follower base snapshot</div>
+      <svg id="svg-foll-sen" viewBox="0 0 500 200" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <strong>Key observation:</strong> CXO-level visitors are the #1 seniority group (21), followed by VP (19) and Director (17) — the audience is highly senior. Consulting and Arts &amp; Design lead job functions. The largest company-size segment is 1,001–5,000 employees (43 visitors). Avg. engagement rate of <strong>27.1%</strong> is well above the ~2% LinkedIn B2B benchmark.
+  </div>
+</main>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const MONTHS  = ["Aug '25", "Sep '25", "Oct '25", "Nov '25", "Dec '25", "Jan '26", "Feb '26", "Mar '26", "Apr '26", "May '26", "Jun '26", "Jul '26", "Aug '26"];
+const CUM     = [5, 5, 5, 14, 22, 24, 26, 30, 34, 40, 75, 109, 119];
+const NEW     = [0, 0, 0, 9, 8, 2, 2, 4, 4, 6, 35, 33, 11];
+const IMP     = [0, 0, 0, 0, 52, 27, 122, 446, 162, 452, 702, 1090, 287];
+const PARTIAL = "Aug '26";
+const POSTS   = [{"title": "If AI is changing hiring, entry-level professionals may feel it first.  A new Stanford study found that employment decli", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7484970411718414336", "date": "20 Jul 2026", "author": "Marco T.D.", "impressions": 687, "clicks": 4, "reactions": 2, "comments": 0, "reposts": 0, "eng": 0.9}, {"title": "A recent study found that AI-generated and fraudulent candidates are now among the biggest concerns for recruiters.  As ", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7471177801937784835", "date": "12 Jun 2026", "author": "Marco T.D.", "impressions": 409, "clicks": 7, "reactions": 8, "comments": 1, "reposts": 2, "eng": 4.4}, {"title": "Big news for PROVEN. We have been selected for the Miro Canvas 26 Hall of Fame 2026 in the Innovation category.  At Prov", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7461401600817922049", "date": "16 May 2026", "author": "Gerard P.", "impressions": 270, "clicks": 6, "reactions": 2, "comments": 1, "reposts": 1, "eng": 3.7}, {"title": "Ramadan Mubarak. To everyone observing this month of reflection and discipline, we wish you peace, clarity and strength.", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7429969423605800961", "date": "18 Feb 2026", "author": "Gerard P.", "impressions": 255, "clicks": 24, "reactions": 1, "comments": 0, "reposts": 0, "eng": 9.8}, {"title": "For a long time, #hiring has run on proxies. A CV. A list of past roles. A certificate. Each one stands in for the thing", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7473006198485757953", "date": "17 Jun 2026", "author": "Marco T.D.", "impressions": 220, "clicks": 9, "reactions": 6, "comments": 0, "reposts": 1, "eng": 7.3}, {"title": "We were at MWC.  The future of work needs us. Special thanks to our colleagues from Revnuu for all your support you are ", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7435301152323411968", "date": "5 Mar 2026", "author": "Gerard P.", "impressions": 203, "clicks": 5, "reactions": 4, "comments": 0, "reposts": 0, "eng": 4.4}, {"title": "We've been today at the W.A. de Vigier Stiftung Startup Awards as 1 of the 50 best startups pitching Proven. We are the ", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7434576388705296384", "date": "3 Mar 2026", "author": "Gerard P.", "impressions": 189, "clicks": 107, "reactions": 6, "comments": 0, "reposts": 0, "eng": 59.8}, {"title": "We\u2019re proud to share that we have been selected among the Top 50 Startups of 2026 at the W.A. de Vigier Stiftung Award i", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7429203010947502081", "date": "16 Feb 2026", "author": "Gerard P.", "impressions": 160, "clicks": 2, "reactions": 3, "comments": 0, "reposts": 0, "eng": 3.1}, {"title": "Thanks Marco Tulio Daza Ram\u00edrez for your comment. We really need to solve the problem of credibility in the Labour Marke", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7458109900309725184", "date": "7 May 2026", "author": "Gerard P.", "impressions": 158, "clicks": 3, "reactions": 2, "comments": 0, "reposts": 1, "eng": 3.8}, {"title": "Candidate #fraud is becoming a mainstream operational risk in staffing and #recruitment. #GenAI can now produce convinci", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7488556532977041409", "date": "29 Jul 2026", "author": "Marco T.D.", "impressions": 101, "clicks": 2, "reactions": 6, "comments": 0, "reposts": 2, "eng": 9.9}, {"title": "Scrum Master Validation - Swiss Edition completed \ud83e\uded5  We\u2019re proud to conclude the Swiss edition of our Scrum Master valid", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7407036283887329281", "date": "17 Dec 2025", "author": "Gerard P.", "impressions": 88, "clicks": 1, "reactions": 0, "comments": 0, "reposts": 0, "eng": 1.1}, {"title": "When trust meets people-focused professionals, great things happen.  The PROVEN team is very proud to have started colla", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7480621630013128706", "date": "8 Jul 2026", "author": "Marco F.", "impressions": 71, "clicks": 1, "reactions": 5, "comments": 0, "reposts": 0, "eng": 8.5}, {"title": "We received a postcard of our dear Lucie Agolini from CNVS.  We believe so much in everything you say, and we know that ", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7419419219345178624", "date": "20 Jan 2026", "author": "Gerard P.", "impressions": 43, "clicks": 0, "reactions": 0, "comments": 0, "reposts": 0, "eng": 0.0}, {"title": "Proud to see the ViSiON and DiReCTioN of our Company. Thanks to our Co-Founders and the people who trusted us.", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7407328332075278336", "date": "18 Dec 2025", "author": "Gerard P.", "impressions": 36, "clicks": 1, "reactions": 0, "comments": 0, "reposts": 0, "eng": 2.8}, {"title": "AI is becoming remarkably good at handling codified knowledge, the kind found in textbooks, manuals, and standard proced", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7488956696271339521", "date": "19 Jul 2026", "author": "Marco T.D.", "impressions": 28, "clicks": 1, "reactions": 0, "comments": 0, "reposts": 0, "eng": 3.6}, {"title": "An interesting perspective.  We agree with the idea that the conversation shouldn't be about\u00a0#degrees versus #skills. De", "url": "https://www.linkedin.com/feed/update/urn:li:activity:7487492938126680065", "date": "27 Jul 2026", "author": "Marco T.D.", "impressions": 21, "clicks": 0, "reactions": 3, "comments": 0, "reposts": 0, "eng": 14.3}, {"title": "Post title", "url": "Post link", "date": "", "author": "Posted by", "impressions": 0, "clicks": 0, "reactions": 0, "comments": 0, "reposts": 0, "eng": 0.0}];
+const VIS_DATES = ["28 Jul", "28 Jul", "29 Jul", "29 Jul", "30 Jul", "30 Jul", "31 Jul", "31 Jul", "1 Aug", "1 Aug", "2 Aug", "2 Aug", "3 Aug", "3 Aug", "4 Aug", "4 Aug", "5 Aug", "5 Aug", "6 Aug", "6 Aug", "7 Aug", "7 Aug", "8 Aug", "8 Aug", "9 Aug", "9 Aug", "10 Aug", "10 Aug", "11 Aug", "11 Aug", "12 Aug", "12 Aug", "13 Aug", "13 Aug", "14 Aug", "14 Aug", "15 Aug", "15 Aug", "16 Aug", "16 Aug", "17 Aug", "17 Aug", "18 Aug", "19 Aug", "20 Aug", "21 Aug", "22 Aug", "23 Aug", "24 Aug", "25 Aug"];
+const VIS_VIEWS = [7, 7, 5, 5, 1, 1, 6, 6, 3, 3, 0, 0, 0, 0, 1, 1, 0, 0, 2, 2, 0, 0, 0, 0, 1, 1, 7, 7, 1, 1, 2, 2, 2, 2, 3, 3, 0, 0, 0, 0, 2, 2, 4, 0, 1, 1, 0, 0, 0, 2];
+const SENIORITY = [["Unpaid", 1], ["Senior", 1], ["Manager", 1], ["Director", 17], ["VP", 19], ["CXO", 21], ["Owner", 2]];
+const JOB_FN    = [["Consulting", 17], ["Arts and Design", 15], ["Entrepreneurship", 9], ["Human Resources", 7], ["Product Management", 6], ["Real Estate", 3], ["Information Technology", 3], ["Healthcare Services", 2]];
+const VIS_LOC   = [["Greater Barcelona Metropolitan Area, Spain", 10]];
+const CS        = [["1", 8], ["2-10", 7], ["11-50", 21], ["51-200", 23], ["201-500", 12], ["501-1000", 16], ["1001-5000", 43], ["10001+", 7]];
+const FOLL_LOC  = [["Switzerland", 30], ["Spain", 16], ["United Kingdom", 12], ["Germany", 8], ["Mexico", 3], ["South Africa", 3], ["India", 3], ["Poland", 2], ["China", 2], ["Italy", 1], ["Portugal", 1], ["Pakistan", 1], ["Egypt", 1], ["Raleigh-Durham-Chapel Hill Area", 1], ["Miami-Fort Lauderdale Area", 1], ["Atlanta Metropolitan Area", 1], ["Romania", 1], ["Greater Biloxi Area", 1], ["Czechia", 1], ["San Francisco Bay Area", 1], ["Greater Philadelphia", 1], ["Netherlands", 1], ["Dallas-Fort Worth Metroplex", 1], ["Nashville Metropolitan Area", 1]];
+
+// Follower audience seniority (from Follower Audience sheet)
+const FOLL_SEN = [
+  ["Senior",41],["Director",11],["Manager",7],["VP",4],["Owner",4],["CXO",2],["Partner",1]
+];
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────────
+const tt = document.getElementById('tt');
+function showTip(e, text) { tt.textContent = text; tt.style.opacity = 1; moveTip(e); }
+function moveTip(e) { tt.style.left = (e.clientX + 14) + 'px'; tt.style.top = (e.clientY - 8) + 'px'; }
+function hideTip() { tt.style.opacity = 0; }
+document.querySelectorAll('.info-icon').forEach(el => {
+  el.addEventListener('mouseenter', e => showTip(e, el.dataset.tip));
+  el.addEventListener('mousemove', moveTip);
+  el.addEventListener('mouseleave', hideTip);
+});
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',i===j));
+  document.querySelectorAll('.tab-panel').forEach((p,j)=>p.classList.toggle('active',i===j));
+}
+
+// ── SVG HELPERS ───────────────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svgText(parent, x, y, txt, attrs={}) {
+  const t = el('text', {x, y, ...attrs}, parent);
+  t.textContent = txt; return t;
+}
+
+// ── LINE CHART ────────────────────────────────────────────────────────────────
+function drawLine(svgId, labels, vals, color, viewW=500, viewH=180, padL=40, padR=10, padT=15, padB=40) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${viewW} ${viewH}`);
+  const cW=viewW-padL-padR, cH=viewH-padT-padB;
+  const max = Math.max(...vals, 1);
+  const xS = i => padL + i/(Math.max(labels.length-1,1))*cW;
+  const yS = v => padT + (1 - v/max)*cH;
+  [0,0.25,0.5,0.75,1].forEach(f => {
+    const y = padT + (1-f)*cH;
+    el('line',{x1:padL,y1:y,x2:viewW-padR,y2:y,stroke:'#e4e7ed','stroke-width':'0.7'},svg);
+    svgText(svg, padL-4, y+4, Math.round(f*max), {'font-size':'9','fill':'#8990a8','text-anchor':'end'});
+  });
+  const areaPath = `M${xS(0)},${yS(vals[0])} ` +
+    vals.map((v,i)=>`L${xS(i)},${yS(v)}`).join(' ') +
+    ` L${xS(vals.length-1)},${padT+cH} L${xS(0)},${padT+cH} Z`;
+  el('path',{d:areaPath,fill:color,opacity:'0.08'},svg);
+  const linePath = `M${xS(0)},${yS(vals[0])} ` + vals.map((v,i)=>`L${xS(i)},${yS(v)}`).join(' ');
+  el('path',{d:linePath,fill:'none',stroke:color,'stroke-width':'2.2'},svg);
+  vals.forEach((v,i) => {
+    const cx=xS(i), cy=yS(v);
+    el('circle',{cx,cy,r:'4',fill:color,'stroke':'white','stroke-width':'1.5'},svg);
+    const hit = el('circle',{cx,cy,r:'10',fill:'transparent',style:'cursor:pointer'},svg);
+    hit.addEventListener('mouseenter', e => showTip(e, `${labels[i]}: ${v}`));
+    hit.addEventListener('mousemove', moveTip);
+    hit.addEventListener('mouseleave', hideTip);
+  });
+  const step = Math.ceil(labels.length/10);
+  labels.forEach((l,i) => {
+    if (i % step !== 0 && i !== labels.length-1) return;
+    svgText(svg, xS(i), viewH-5, l, {'font-size':'9','fill':'#8990a8','text-anchor':'middle'});
+  });
+}
+
+// ── BAR CHART ─────────────────────────────────────────────────────────────────
+function drawBars(svgId, labels, vals, colorFn, viewW=500, viewH=180, padL=40, padR=10, padT=15, padB=40) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${viewW} ${viewH}`);
+  const cW=viewW-padL-padR, cH=viewH-padT-padB;
+  const max = Math.max(...vals, 1);
+  const bW = cW/vals.length*0.7;
+  const gap = cW/vals.length;
+  [0,0.5,1].forEach(f => {
+    const y = padT + (1-f)*cH;
+    el('line',{x1:padL,y1:y,x2:viewW-padR,y2:y,stroke:'#e4e7ed','stroke-width':'0.7'},svg);
+    svgText(svg, padL-4, y+4, Math.round(f*max), {'font-size':'9','fill':'#8990a8','text-anchor':'end'});
+  });
+  vals.forEach((v,i) => {
+    const x = padL + i*gap + gap/2 - bW/2;
+    const bH = (v/max)*cH;
+    const y = padT + cH - bH;
+    el('rect',{x, y, width:bW, height:bH, fill:colorFn(i,v,labels[i]), rx:'3'},svg);
+    if (v > 0) svgText(svg, x+bW/2, y-3, v, {'font-size':'9','fill':'#4a5268','text-anchor':'middle'});
+    const hit = el('rect',{x,y:padT,width:bW,height:cH,fill:'transparent',style:'cursor:pointer'},svg);
+    hit.addEventListener('mouseenter', e => showTip(e, `${labels[i]}: ${v}`));
+    hit.addEventListener('mousemove', moveTip);
+    hit.addEventListener('mouseleave', hideTip);
+    const step = Math.ceil(labels.length/9);
+    if (i % step === 0 || i === labels.length-1)
+      svgText(svg, x+bW/2, viewH-5, labels[i], {'font-size':'9','fill':'#8990a8','text-anchor':'middle'});
+  });
+}
+
+// ── HORIZONTAL BAR ────────────────────────────────────────────────────────────
+function drawHBar(svgId, labels, vals, colorFn, viewW=500, viewH=200) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${viewW} ${viewH}`);
+  if (!vals.length) return;
+  const max = Math.max(...vals, 1);
+  const rowH = (viewH-10) / labels.length;
+  const barMaxW = viewW - 155 - 45;
+  labels.forEach((l,i) => {
+    const y = 10 + i*rowH;
+    const bW = (vals[i]/max)*barMaxW;
+    el('rect',{x:155,y:y+rowH*0.15,width:bW,height:rowH*0.65,fill:colorFn(i,l),rx:'3'},svg);
+    svgText(svg,150,y+rowH*0.72,l,{'font-size':'10','fill':'#4a5268','text-anchor':'end'});
+    if (vals[i]) svgText(svg,160+bW,y+rowH*0.72,vals[i],{'font-size':'10','fill':'#4a5268'});
+    const hit = el('rect',{x:0,y,width:viewW,height:rowH,fill:'transparent',style:'cursor:pointer'},svg);
+    hit.addEventListener('mouseenter', e => showTip(e, `${l}: ${vals[i]}`));
+    hit.addEventListener('mousemove', moveTip);
+    hit.addEventListener('mouseleave', hideTip);
+  });
+}
+
+// ── LOC TABLE ─────────────────────────────────────────────────────────────────
+function drawLocTable(tableId, data, color) {
+  const tb = document.getElementById(tableId);
+  if (!data || !data.length) { tb.innerHTML='<tr><td style="color:#8990a8">No data</td></tr>'; return; }
+  const max = Math.max(...data.map(d=>d[1]||0));
+  tb.innerHTML = data.slice(0,10).map(item => {
+    const pct = Math.round((item[1]||0)/max*100);
+    return `<tr>
+      <td>${item[0]}</td>
+      <td class="num">${item[1]}</td>
+      <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+const DECISION_MAKERS = ['Manager','Senior','VP','Director','CXO','Owner','Partner'];
+
+// Tab 1
+drawLine('svg-foll', MONTHS, CUM, '#0057B8');
+drawBars('svg-new', MONTHS, NEW, (i) => MONTHS[i]===PARTIAL?'#b0b8cc':(NEW[i]===Math.max(...NEW)?'#0057B8':'#6b3fa0'));
+drawBars('svg-imp', MONTHS, IMP, (i) => MONTHS[i]===PARTIAL?'#b0b8cc':'#0e8c7a', 1000, 180, 45, 10, 15, 40);
+drawLocTable('loc-foll', FOLL_LOC, '#0057B8');
+drawLocTable('loc-vis-static', VIS_LOC, '#0e8c7a');
+
+// Tab 2
+drawLine('svg-daily', VIS_DATES, VIS_VIEWS, '#0e8c7a', 1000, 180, 40, 10, 15, 40);
+
+const senLabels = SENIORITY.map(x=>x[0]);
+const senVals   = SENIORITY.map(x=>x[1]);
+drawHBar('svg-sen', senLabels, senVals, (i,l) => DECISION_MAKERS.some(d=>l.includes(d))?'#0057B8':'#6b3fa0');
+
+const jobLabels = JOB_FN.map(x=>x[0]);
+const jobVals   = JOB_FN.map(x=>x[1]);
+drawBars('svg-job', jobLabels, jobVals, i=>i<2?'#0057B8':'#6b3fa0', 500, 220, 10, 10, 15, 70);
+
+const csLabels = CS.map(x=>x[0]);
+const csVals   = CS.map(x=>x[1]);
+drawBars('svg-size', csLabels, csVals, ()=>'#b45309', 500, 200, 10, 10, 15, 60);
+
+drawLocTable('loc-vis', VIS_LOC, '#0e8c7a');
+drawLocTable('loc-foll2', FOLL_LOC, '#0057B8');
+
+const follSenLbls = FOLL_SEN.map(x=>x[0]);
+const follSenVals = FOLL_SEN.map(x=>x[1]);
+drawHBar('svg-foll-sen', follSenLbls, follSenVals, (i,l) => DECISION_MAKERS.some(d=>l.includes(d))?'#0057B8':'#6b3fa0');
+
+// Posts table
+let postSort = {col:3, asc:false};
+function renderPosts(arr) {
+  document.getElementById('posts-body').innerHTML = arr.map(p => `
+    <tr>
+      <td><div class="post-title"><a href="${p.url}" target="_blank">${p.title}</a></div></td>
+      <td style="white-space:nowrap">${p.date}</td>
+      <td><span class="author-tag">${p.author}</span></td>
+      <td class="num">${p.impressions.toLocaleString()}</td>
+      <td class="num">${p.clicks}</td>
+      <td class="num">${p.reactions}</td>
+      <td class="num">${p.comments}</td>
+      <td class="num">${p.eng}%</td>
+    </tr>`).join('');
+}
+function sortPosts(col) {
+  const ths = document.querySelectorAll('#posts-tbl th');
+  ths.forEach(t => t.classList.remove('sort-asc','sort-desc'));
+  if (postSort.col===col) postSort.asc=!postSort.asc;
+  else { postSort.col=col; postSort.asc=false; }
+  ths[col].classList.add(postSort.asc?'sort-asc':'sort-desc');
+  const keys=['title','date','author','impressions','clicks','reactions','comments','eng'];
+  const sorted=[...POSTS].sort((a,b)=>{
+    const av=a[keys[col]], bv=b[keys[col]];
+    return postSort.asc?(av>bv?1:-1):(av<bv?1:-1);
+  });
+  renderPosts(sorted);
+}
+renderPosts(POSTS);
+document.querySelectorAll('#posts-tbl th')[3].classList.add('sort-desc');
+</script>
+</body>
+</html>
