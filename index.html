@@ -359,6 +359,13 @@ function drawLocTable(tableId, data, color) {
 }
 
 const DECISION_MAKERS = ['Manager','Senior','VP','Director','CXO','Owner','Partner'];
+const SENIORITY_RANK = ['Owner','CXO','Partner','VP','Director','Manager','Senior','Entry','Unpaid'];
+function sortBySeniority(pairs) {
+  return [...pairs].sort((a,b) => {
+    const ra = SENIORITY_RANK.indexOf(a[0]), rb = SENIORITY_RANK.indexOf(b[0]);
+    return (ra===-1?999:ra) - (rb===-1?999:rb);
+  });
+}
 
 // ── TIMEFRAME DROPDOWNS ────────────────────────────────────────────────────────
 function populateTimeframe(selectEl, months, monthLabels) {
@@ -442,7 +449,8 @@ function renderFollowers() {
   drawLine('svg-foll', DATA.monthLabels, DATA.cum, '#0057B8');
   drawBars('svg-new', DATA.monthLabels, DATA.new, (i) => DATA.months[i]===DATA.currentMonth ? '#b0b8cc' : (DATA.new[i]===Math.max(...DATA.new) ? '#0057B8' : '#6b3fa0'));
   drawLocTable('loc-foll', DATA.follLoc, '#0057B8');
-  const senLbls = DATA.follSen.map(x=>x[0]), senVals = DATA.follSen.map(x=>x[1]);
+  const follSenSorted = sortBySeniority(DATA.follSen);
+  const senLbls = follSenSorted.map(x=>x[0]), senVals = follSenSorted.map(x=>x[1]);
   drawHBar('svg-foll-sen', senLbls, senVals, (i,l) => DECISION_MAKERS.some(d=>l.includes(d))?'#0057B8':'#6b3fa0');
   const indTop = DATA.follInd.slice(0,10);
   drawBars('svg-foll-ind', indTop.map(x=>x[0]), indTop.map(x=>x[1]), ()=>'#6b3fa0', 1000, 260, 10, 10, 15, 130, true);
@@ -524,7 +532,8 @@ function renderTab2Visitors() {
     return;
   }
 
-  const senLbls = aud.seniority.map(x=>x[0]), senVals = aud.seniority.map(x=>x[1]);
+  const audSenSorted = sortBySeniority(aud.seniority);
+  const senLbls = audSenSorted.map(x=>x[0]), senVals = audSenSorted.map(x=>x[1]);
   drawHBar('svg-sen', senLbls, senVals, (i,l) => DECISION_MAKERS.some(d=>l.includes(d))?'#0057B8':'#6b3fa0');
 
   const jobTop = aud.job.slice(0,8);
