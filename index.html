@@ -103,6 +103,14 @@
     </div>
   </div>
 
+  <div class="charts-row">
+    <div class="chart-card wide">
+      <h2>Daily page views</h2>
+      <div class="subtitle" id="vis-daily-subtitle">&nbsp;</div>
+      <svg id="svg-daily" viewBox="0 0 1000 180" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
   <div class="section-label">Posts <span class="note" id="posts-count-note"></span></div>
   <div class="chart-card wide" style="overflow-x:auto">
     <table class="posts-table" id="posts-tbl">
@@ -180,14 +188,6 @@
     <div class="kpi-tile"><div class="label">Unique Visitors</div><div class="value" id="k2-uniq">-</div><div class="delta" id="k2-uniq-note">-</div></div>
     <div class="kpi-tile"><div class="label">Pages / Visitor</div><div class="value" id="k2-ppv">-</div><div class="delta">Views ÷ unique visitors</div></div>
     <div class="kpi-tile"><div class="label">Active Days</div><div class="value" id="k2-active">-</div><div class="delta">Days with ≥1 view</div></div>
-  </div>
-
-  <div class="charts-row">
-    <div class="chart-card wide">
-      <h2>Daily page views</h2>
-      <div class="subtitle" id="vis-daily-subtitle">&nbsp;</div>
-      <svg id="svg-daily" viewBox="0 0 1000 180" width="100%" preserveAspectRatio="xMidYMid meet"></svg>
-    </div>
   </div>
 
   <div class="charts-row cols-2">
@@ -427,6 +427,13 @@ function renderTab1() {
 
   drawBars('svg-imp', DATA.monthLabels, DATA.imp, (i) => DATA.months[i]===period ? '#0057B8' : (DATA.months[i]===DATA.currentMonth ? '#b0b8cc' : '#0e8c7a'), 1000, 180, 45, 10, 15, 40);
 
+  const daily = isTotal ? DATA.visDaily : DATA.visDaily.filter(d => d.date.startsWith(period));
+  document.getElementById('vis-daily-subtitle').textContent = isTotal
+    ? (DATA.firstDate + ' – ' + DATA.lastDate)
+    : DATA.monthLabels[DATA.months.indexOf(period)];
+  const dayLabels = daily.map(d => new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+  drawLine('svg-daily', dayLabels, daily.map(d=>d.views), '#0e8c7a', 1000, 180, 40, 10, 15, 40);
+
   window.__postsForTab1 = posts;
   sortPosts(postSort.col, true);
 }
@@ -467,7 +474,7 @@ function renderFollowers() {
   const senLbls = follSenSorted.map(x=>x[0]), senVals = follSenSorted.map(x=>x[1]);
   drawHBar('svg-foll-sen', senLbls, senVals, (i,l) => DECISION_MAKERS.some(d=>l.includes(d))?'#0057B8':'#6b3fa0');
   const indTop = DATA.follInd.slice(0,10);
-  drawBars('svg-foll-ind', indTop.map(x=>x[0]), indTop.map(x=>x[1]), ()=>'#6b3fa0', 1000, 260, 10, 10, 15, 130, true);
+  drawBars('svg-foll-ind', indTop.map(x=>x[0]), indTop.map(x=>x[1]), ()=>'#6b3fa0', 1000, 260, 32, 10, 15, 130, true);
 
   document.getElementById('k2-toploc').textContent = DATA.follLoc[0] ? DATA.follLoc[0][0] : '-';
   document.getElementById('k2-topsen').textContent = DATA.follSen[0] ? DATA.follSen[0][0] : '-';
@@ -503,13 +510,6 @@ function renderTab2Visitors() {
   document.getElementById('k2-uniq-note').textContent = isTotal ? 'Full history' : DATA.monthLabels[DATA.months.indexOf(period)];
   document.getElementById('k2-ppv').textContent = ppv;
   document.getElementById('k2-active').textContent = activeDays;
-  document.getElementById('vis-daily-subtitle').textContent = isTotal
-    ? (DATA.firstDate + ' – ' + DATA.lastDate)
-    : DATA.monthLabels[DATA.months.indexOf(period)];
-
-  const dayLabels = daily.map(d => new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-  drawLine('svg-daily', dayLabels, daily.map(d=>d.views), '#0e8c7a', 1000, 180, 40, 10, 15, 40);
-
   renderFollowerKpi();
 
   let aud = null;
@@ -551,11 +551,11 @@ function renderTab2Visitors() {
   drawHBar('svg-sen', senLbls, senVals, (i,l) => DECISION_MAKERS.some(d=>l.includes(d))?'#0057B8':'#6b3fa0');
 
   const jobTop = aud.job.slice(0,8);
-  drawBars('svg-job', jobTop.map(x=>x[0]), jobTop.map(x=>x[1]), (i)=>i<2?'#0057B8':'#6b3fa0', 500, 260, 10, 10, 15, 130, true);
+  drawBars('svg-job', jobTop.map(x=>x[0]), jobTop.map(x=>x[1]), (i)=>i<2?'#0057B8':'#6b3fa0', 500, 260, 32, 10, 15, 130, true);
 
   const sizeOrder = ['1','2-10','11-50','51-200','201-500','501-1000','1001-5000','5001-10000','10001+'];
   const sizeSorted = [...aud.size].sort((a,b)=>sizeOrder.indexOf(a[0])-sizeOrder.indexOf(b[0]));
-  drawBars('svg-size', sizeSorted.map(x=>x[0]), sizeSorted.map(x=>x[1]), ()=>'#b45309', 500, 200, 10, 10, 15, 60);
+  drawBars('svg-size', sizeSorted.map(x=>x[0]), sizeSorted.map(x=>x[1]), ()=>'#b45309', 500, 200, 32, 10, 15, 60);
 
   drawLocTable('loc-vis', aud.location, '#0e8c7a');
 
